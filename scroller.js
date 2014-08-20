@@ -1,13 +1,13 @@
 (function(win) {
-    var Scroller = function(el, config) {
-            if(!config) {
-                config = {};
-            }
-            
-            this._el = el;
-        
-            this.attach();
-        };
+    function Scroller(el, config) {
+        if(!config) {
+            config = {};
+        }
+
+        this._el = el;
+
+        this.attach();
+    }
     
     Scroller.prototype = {
         attach : function() {
@@ -29,6 +29,11 @@
         
         _calc : function() {
             console.log("_calc");
+            
+            this._rect   = this._el.getBoundingClientRect();
+            this._height = this._rect.height;
+            
+            console.log(this._rect);
         },
         
         _onScroll : function() {
@@ -37,5 +42,4 @@
     };
 
     win.Scroller = Scroller;
-    
 }(window));
