@@ -19,6 +19,8 @@
             });
             
             this._el.addEventListener("scroll", throttler(this._onScroll.bind(this)));
+            
+            this._calc();
         },
         
         detach : function() {
