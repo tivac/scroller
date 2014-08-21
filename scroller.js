@@ -96,7 +96,7 @@
         
         // Event handlers
         _onScroll : function(e) {
-            this._translate(Math.floor(this._inner.scrollTop * this._ratioDown))
+            this._translate(Math.floor(this._inner.scrollTop * this._ratioDown));
         },
         
         _onGrab : function(e) {
