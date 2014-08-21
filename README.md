@@ -14,3 +14,9 @@ No thought is given to supporting non-webkit browsers, though I'm not trying to 
 ## Example ##
 
 [http://jsbin.com/likez/](http://jsbin.com/likez/)
+
+## Development ##
+
+I'm building this inside jsBin as an experiment. I think I like it?
+
+[http://jsbin.com/yuyag/2/edit](http://jsbin.com/yuyag/2/edit)
