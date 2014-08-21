@@ -14,6 +14,10 @@
         }
         
         this._events  = [];
+        
+        this._observer = new MutationObserver(
+            throttler(this._calc.bind(this))
+        );
 
         this.attach();
     }
@@ -40,9 +44,7 @@
         
         // Public-ish API
         attach : function() {
-            var observer = new MutationObserver(throttler(this._calc.bind(this)));
-
-            observer.observe(this._outer, {
+            this._observer.observe(this._outer, {
                 childList : true,
                 subtree   : true
             });
@@ -55,6 +57,7 @@
         
         detach : function() {
             this._off();
+            this._observer.disconnect();
         },
         
         // Utility Methods
@@ -64,29 +67,32 @@
             this._rect    = this._outer.getBoundingClientRect();
             this._heights = heights = {
                 outer  : this._rect.height,
-                inner  : this._inner.scrollHeight,
-                handle : this._handle.getBoundingClientRect().height
+                inner  : this._inner.scrollHeight
             };
             
-            console.log(this._rect);
+            // Ratios for going from outer <-> inner
+            this._ratioDown = (heights.outer / heights.inner);
+            this._ratioUp   = (heights.inner / heights.outer);
             
-            this._stepDown = (heights.outer / heights.inner);
-            this._stepUp   = (heights.inner / heights.outer);
+            // Calculate handle height based on content
+            this._handle.style.height = Math.max(
+                50,
+                Math.round(this._heights.outer * this._ratioDown)
+            ) + "px";
             
-            console.log(this._stepDown, this._stepUp);
+            // Add handle height after any adjustments based on ratios
+            this._heights.handle =this._handle.getBoundingClientRect().height;
         },
         
         // Event handlers
         // TODO: this never scrolls ALL the way to the bottom
         _onScroll : function() {
-            var pos = Math.round(this._inner.scrollTop * this._stepDown);
+            var pos = Math.round(this._inner.scrollTop * this._ratioDown);
             
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
         
         _onGrab : function(e) {
-            console.log("grabbed", e);
-            
             if(e.which !== 1) {
                 return;
             }
@@ -106,18 +112,21 @@
                 return;
             }
             
-            offset = e.pageY - this._rect.top;
+            // Figure out base offset, clamped
+            offset = Math.max(
+                0,
+                Math.min(
+                    this._heights.outer - this._heights.handle,
+                    e.pageY - this._rect.top
+                )
+            );
             
-            // Keep handle in sync
+            // Update elements
             this._handle.style.transform = "translateY(" + offset + "px)";
-            
-            // Keep inner in sync
-            this._inner.scrollTop = Math.round(offset * this._stepUp);
+            this._inner.scrollTop = Math.round(offset * this._ratioUp);
         },
         
         _onRelease : function(e) {
-            console.log("released");
-            
             this._dragging.forEach(this._off.bind(this));
             this._dragging = false;
         }
