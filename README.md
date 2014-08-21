@@ -11,6 +11,6 @@ This solution is using only the purest vanilla JS (plus CSS & some markup) with 
 
 No thought is given to supporting non-webkit browsers, though I'm not trying to exclude them either. I'm targeting Chromium 28 because that's what is embedded in GW2 currently.
 
-## Live Example ##
+## Example ##
 
-<iframe seamless width="600" height="600" src="http://jsbin.com/likez/embed"></iframe>
+[http://jsbin.com/likez/](http://jsbin.com/likez/)
