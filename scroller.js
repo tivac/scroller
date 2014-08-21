@@ -84,19 +84,19 @@
                 Math.round(this._heights.outer * this._ratioDown)
             ) + "px";
             
-            // Add handle height after any adjustments based on ratios
+            // Add heights using handle height after any adjustments based on ratios
             heights.handle = this._handle.getBoundingClientRect().height;
+            heights.max    = heights.outer - heights.handle;
+        },
+
+        _translate : function(pos) {
+            this._handle.style.transform =
+                "translateY(" + clamp(pos, 0, this._heights.max) + "px)";
         },
         
         // Event handlers
         _onScroll : function(e) {
-            var pos = clamp(
-                    Math.floor(this._inner.scrollTop * this._ratioDown),
-                    0,
-                    this._heights.outer - this._heights.handle
-                );
-            
-            this._handle.style.transform = "translateY(" + pos + "px)";
+            this._translate(Math.floor(this._inner.scrollTop * this._ratioDown))
         },
         
         _onGrab : function(e) {
@@ -123,10 +123,10 @@
             }
             
             scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratioUp);
-            handle = Math.round(clamp(scroll * this._ratioDown, 0, this._heights.outer - this._heights.handle));
+            handle = Math.round(scroll * this._ratioDown);
             
             // Update elements
-            this._handle.style.transform = "translateY(" + handle + "px)";
+            this._translate(handle);
             this._inner.scrollTop = scroll;
         },
         
