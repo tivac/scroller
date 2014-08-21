@@ -13,4 +13,4 @@ No thought is given to supporting non-webkit browsers, though I'm not trying to 
 
 ## Live Example ##
 
-<a class="jsbin-embed" href="http://jsbin.com/likez/embed?output">JS Bin</a><script src="http://static.jsbin.com/js/embed.js"></script>
+<iframe seamless width="600" height="600" src="http://jsbin.com/likez/embed"></iframe>
