@@ -1,5 +1,38 @@
 .outer {
     width: 300px;
     height: 500px;
+}
+
+/* Scrolling-relevant styles */
+.outer {
     overflow-y: auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.inner {
+    position: absolute;
+    top: 0;
+    right: -17px;
+    bottom: 0;
+    left: 0;
+    overflow: scroll;
+    overflow-x: hidden;
+    padding-right: 20px;
+}
+
+.scrollbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 10px;
+    background: #000;
+}
+
+.scrollbar .handle {
+    position: relative;
+    top: 0;
+    background: #666;
+    height: 30px;
 }

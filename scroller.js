@@ -4,7 +4,13 @@
             config = {};
         }
 
-        this._el = el;
+        this._outer  = el;
+        this._inner  = el.querySelector(".inner");
+        this._handle = el.querySelector(".scrollbar .handle");
+        
+        if(!this._inner && !this._handle) {
+            throw new Error("Missing .inner or .handle elements");
+        }
 
         this.attach();
     }
@@ -13,12 +19,12 @@
         attach : function() {
             var observer = new MutationObserver(throttler(this._calc.bind(this)));
 
-            observer.observe(this._el, {
+            observer.observe(this._outer, {
                 childList : true,
                 subtree   : true
             });
             
-            this._el.addEventListener("scroll", throttler(this._onScroll.bind(this)));
+            this._inner.addEventListener("scroll", throttler(this._onScroll.bind(this)));
             
             this._calc();
         },
@@ -30,16 +36,30 @@
         _calc : function() {
             console.log("_calc");
             
-            this._rect   = this._el.getBoundingClientRect();
-            this._height = this._rect.height;
+            var heights  = {
+                    outer  : this._outer.getBoundingClientRect().height,
+                    inner  : this._inner.scrollHeight,
+                    handle : this._handle.getBoundingClientRect().height
+                };
             
-            console.log(this._rect);
+            this._ratio = (heights.outer / heights.inner);
+            
+            console.log(heights, this._ratio);
+            
+            this._heights = heights;
         },
         
         _onScroll : function() {
-            console.log("scroll", this._el.scrollTop);
+            console.log("scroll", this._inner.scrollTop);
+            
+            var pos = Math.round(this._inner.scrollTop * this._ratio);
+            
+            console.log(pos);
+            
+            this._handle.style.transform = "translateY(" + pos + "px)";
         }
     };
 
     win.Scroller = Scroller;
+    
 }(window));
