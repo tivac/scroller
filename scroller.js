@@ -1,4 +1,8 @@
 (function(win) {
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+    
     function Scroller(el, config) {
         if(!config) {
             config = {};
@@ -81,13 +85,16 @@
             ) + "px";
             
             // Add handle height after any adjustments based on ratios
-            this._heights.handle =this._handle.getBoundingClientRect().height;
+            heights.handle = this._handle.getBoundingClientRect().height;
         },
         
         // Event handlers
-        // TODO: this never scrolls ALL the way to the bottom
-        _onScroll : function() {
-            var pos = Math.round(this._inner.scrollTop * this._ratioDown);
+        _onScroll : function(e) {
+            var pos = clamp(
+                    Math.floor(this._inner.scrollTop * this._ratioDown),
+                    0,
+                    this._heights.outer - this._heights.handle
+                );
             
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
@@ -101,34 +108,39 @@
             
             this._dragging = [
                 this._on(document, "mousemove", throttler(this._onMove.bind(this))),
-                this._on(document, "mouseup", this._onRelease.bind(this))
+                this._on(document, "mouseup", this._onRelease.bind(this)),
+                this._on(document.body, "mouseenter", this._onEnter.bind(this))
             ];
+            
+            this._grab = e.offsetY;
         },
         
         _onMove : function(e) {
-            var offset;
+            var scroll, handle;
             
             if(!this._dragging) {
                 return;
             }
             
-            // Figure out base offset, clamped
-            offset = Math.max(
-                0,
-                Math.min(
-                    this._heights.outer - this._heights.handle,
-                    e.pageY - this._rect.top
-                )
-            );
+            scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratioUp);
+            handle = Math.round(clamp(scroll * this._ratioDown, 0, this._heights.outer - this._heights.handle));
             
             // Update elements
-            this._handle.style.transform = "translateY(" + offset + "px)";
-            this._inner.scrollTop = Math.round(offset * this._ratioUp);
+            this._handle.style.transform = "translateY(" + handle + "px)";
+            this._inner.scrollTop = scroll;
         },
         
-        _onRelease : function(e) {
+        _onRelease : function() {
             this._dragging.forEach(this._off.bind(this));
             this._dragging = false;
+        },
+        
+        _onEnter : function(e) {
+            if(!this._dragging || (e.which || e.buttons) === 1) {
+                return;
+            }
+            
+            this._onRelease();
         }
     };
 
