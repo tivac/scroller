@@ -66,7 +66,7 @@
         
         // Utility Methods
         _calc : function() {
-            var heights;
+            var heights, up, down, handle;
             
             this._rect    = this._outer.getBoundingClientRect();
             this._heights = heights = {
@@ -75,18 +75,23 @@
             };
             
             // Ratios for going from outer <-> inner
-            this._ratioDown = (heights.outer / heights.inner);
-            this._ratioUp   = (heights.inner / heights.outer);
+            down = (heights.outer / heights.inner);
+            up   = (heights.inner / heights.outer);
             
             // Calculate handle height based on content
-            this._handle.style.height = Math.max(
-                50,
-                Math.round(this._heights.outer * this._ratioDown)
-            ) + "px";
+            handle = Math.max(50, Math.round(this._heights.outer * down));
+            this._handle.style.height = handle + "px";
             
-            // Add heights using handle height after any adjustments based on ratios
-            heights.handle = this._handle.getBoundingClientRect().height;
-            heights.max    = heights.outer - heights.handle;
+            heights.handle = handle;
+            heights.max    = heights.outer - handle;
+            
+            // Re-calculate ratios now that we know handle height
+            this._ratios = {
+                down : (heights.max / (heights.inner - heights.outer)),
+                up   : ((heights.inner - heights.outer) / heights.max)
+            };
+            
+            console.log(heights, this._ratios);
         },
 
         _translate : function(pos) {
@@ -96,7 +101,11 @@
         
         // Event handlers
         _onScroll : function(e) {
-            this._translate(Math.floor(this._inner.scrollTop * this._ratioDown));
+            var top = this._inner.scrollTop;
+            
+            console.log("scroll", top, this._ratios.down, Math.round(top * this._ratios.down));
+            
+            this._translate(Math.round(top * this._ratios.down));
         },
         
         _onGrab : function(e) {
@@ -122,8 +131,10 @@
                 return;
             }
             
-            scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratioUp);
-            handle = Math.round(scroll * this._ratioDown);
+            scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratios.up) - this._heights.inner;
+            handle = Math.round(scroll * this._ratios.down);
+            
+            console.log("drag", e.pageY - this._rect.top - this._grab, scroll, handle);
             
             // Update elements
             this._translate(handle);
