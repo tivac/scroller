@@ -208,21 +208,23 @@
         
         _onScrollClick : function(e) {
             var tgt = e.target || e.srcElement,
-                dir;
+                dir, dist;
             
             // How to determine scroll direction differs, depends
             // on if click was on scrollbar or on scroll button.
             // Scroll checks location of click vs scroll position
             // Button just checks button type
             if(tgt === this._scroll) {
-                dir = (this._top * this._ratios.down) > (e.pageY - this._rect.top);
+                dir  = (this._top * this._ratios.down) > (e.pageY - this._rect.top);
+                dist = this._heights.outer * 0.9;
             } else {
                 dir = tgt.classList.contains("up");
+                dist = clamp(this._heights.outer * 0.1, 20, Infinity);
             }
             
             // Scroll by 90% of one page
             // dir being true is up, false is down
-            this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * this._heights.outer * 0.9);
+            this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
         }
     };
 
