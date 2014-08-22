@@ -113,8 +113,6 @@
                 return;
             }
             
-            console.log(e);
-            
             e.preventDefault();
             e.stopPropagation();
             
