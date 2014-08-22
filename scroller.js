@@ -101,7 +101,6 @@
         },
         
         // Event handlers
-        
         _onScroll : function(e) {
             var top = this._inner.scrollTop;
             
@@ -127,7 +126,6 @@
             this._grab = e.pageY - this._handle.getBoundingClientRect().top;
         },
         
-        // moving handle
         _onHandleMove : function(e) {
             var pos;
             
@@ -144,7 +142,6 @@
             this._inner.scrollTop = Math.round(pos * this._ratios.up);
         },
         
-        // letting go of the handle
         _onHandleRelease : function() {
             this._dragging.forEach(this._off.bind(this));
             this._dragging = false;
@@ -159,9 +156,7 @@
             this._onHandleRelease();
         },
         
-        // click on scrollbar
         _onScrollClick : function(e) {
-            console.log(e);
             var top    = this._inner.scrollTop,
                 pos    = e.pageY - this._rect.top,
                 handle = this._heights.handle * this._ratios.up;
