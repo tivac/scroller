@@ -39,28 +39,28 @@
         
         // Public-ish API
         attach : function() {
-            var el;
+            var el, scroll, inner, handle;
             
             this._wrap();
             
             el = this._outer;
             
-            this._inner  = el.querySelector(".inner");
-            this._scroll = el.querySelector(".scrollbar");
-            this._handle = this._scroll.querySelector(".handle");
+            this._inner  = inner  = el.querySelector(".inner");
+            this._scroll = scroll = el.querySelector(".scrollbar");
+            this._handle = handle = scroll.querySelector(".handle");
 
-            if(!this._inner && !this._handle) {
+            if(!inner && !handle) {
                 throw new Error("Missing .inner or .handle elements");
             }
             
-            this._observer.observe(this._outer, {
+            this._observer.observe(el, {
                 childList : true,
                 subtree   : true
             });
             
-            this._on(this._inner,  "scroll",    throttler(this._onScroll.bind(this)));
-            this._on(this._handle, "mousedown", this._onHandleGrab.bind(this));
-            this._on(this._scroll, "mousedown", this._onScrollClick.bind(this));
+            this._on(inner,  "scroll",    throttler(this._onScroll.bind(this)));
+            this._on(handle, "mousedown", this._onHandleGrab.bind(this));
+            this._on(scroll, "mousedown", this._onScrollClick.bind(this));
             
             this._calc();
         },
@@ -129,11 +129,10 @@
             heights.max    = heights.outer - handle - heights.up - heights.down;
             heights.min    = heights.up;
                 
-            // Store ratios now that we know handle height
-            // used for going from outer <-> inner
-            
             scroll = heights.inner - heights.outer - heights.down;
                 
+            // Store ratios now that we know handle height
+            // used for going from outer <-> inner
             this._ratios = {
                 down : (heights.max / scroll),
                 up   : (scroll / heights.max)
@@ -208,18 +207,22 @@
         },
         
         _onScrollClick : function(e) {
-            var top    = this._top,
-                pos    = e.pageY - this._rect.top,
-                handle = this._heights.handle * this._ratios.up;
+            var tgt = e.target || e.srcElement,
+                dir;
             
-            if(top * this._ratios.down > pos) {
-                top -= handle;
+            // How to determine scroll direction differs, depends
+            // on if click was on scrollbar or on scroll button.
+            // Scroll checks location of click vs scroll position
+            // Button just checks button type
+            if(tgt === this._scroll) {
+                dir = (this._top * this._ratios.down) > (e.pageY - this._rect.top);
             } else {
-                top += handle;
+                dir = tgt.classList.contains("up");
             }
             
-            // Update elements
-            this._inner.scrollTop = top;
+            // Scroll by 90% of one page
+            // dir being true is up, false is down
+            this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * this._heights.outer * 0.9);
         }
     };
 
