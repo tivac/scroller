@@ -27,7 +27,7 @@
     }
     
     Scroller.prototype = {
-        // DOM event binding niceities
+        // DOM event binding niceties
         _on : function(el, ev, fn) {
             el.addEventListener(ev, fn);
             
@@ -66,7 +66,7 @@
         
         // Utility Methods
         _calc : function() {
-            var heights, up, down, handle;
+            var heights, handle;
             
             this._rect    = this._outer.getBoundingClientRect();
             this._heights = heights = {
@@ -74,24 +74,25 @@
                 inner  : this._inner.scrollHeight
             };
             
-            // Ratios for going from outer <-> inner
-            down = (heights.outer / heights.inner);
-            up   = (heights.inner / heights.outer);
+            // Calculate handle height based on content ratio
+            handle = Math.max(
+                50,
+                Math.round(
+                    this._heights.outer * (heights.outer / heights.inner)
+                )
+            );
             
-            // Calculate handle height based on content
-            handle = Math.max(50, Math.round(this._heights.outer * down));
             this._handle.style.height = handle + "px";
             
             heights.handle = handle;
             heights.max    = heights.outer - handle;
             
-            // Re-calculate ratios now that we know handle height
+            // Store ratios now that we know handle height
+            // used for going from outer <-> inner
             this._ratios = {
                 down : (heights.max / (heights.inner - heights.outer)),
                 up   : ((heights.inner - heights.outer) / heights.max)
             };
-            
-            console.log(heights, this._ratios);
         },
 
         _translate : function(pos) {
@@ -109,19 +110,25 @@
         },
         
         _onGrab : function(e) {
-            if(e.which !== 1) {
+            var rect;
+            
+            if((e.which || e.buttons) !== 1) {
                 return;
             }
             
             e.preventDefault();
             
+            // Event Handlers
             this._dragging = [
                 this._on(document, "mousemove", throttler(this._onMove.bind(this))),
                 this._on(document, "mouseup", this._onRelease.bind(this)),
                 this._on(document.body, "mouseenter", this._onEnter.bind(this))
             ];
             
-            this._grab = e.offsetY;
+            rect = this._handle.getBoundingClientRect();
+            
+            // Store offset of where handle was grabbed for later adjustment
+            this._grab = e.pageY - rect.top;
         },
         
         _onMove : function(e) {
@@ -131,10 +138,8 @@
                 return;
             }
             
-            scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratios.up) - this._heights.inner;
+            scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratios.up);
             handle = Math.round(scroll * this._ratios.down);
-            
-            console.log("drag", e.pageY - this._rect.top - this._grab, scroll, handle);
             
             // Update elements
             this._translate(handle);
