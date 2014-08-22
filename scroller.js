@@ -29,7 +29,7 @@
     Scroller.prototype = {
         // DOM event binding niceties
         _on : function(el, ev, fn) {
-            el.addEventListener(ev, fn);
+            el.addEventListener(ev, fn, false);
             
             return this._events.push({
                 el : el,
@@ -53,8 +53,9 @@
                 subtree   : true
             });
             
-            this._on(this._inner, "scroll", throttler(this._onScroll.bind(this)));
-            this._on(this._handle, "mousedown", this._onGrab.bind(this));
+            this._on(this._inner,  "scroll",    throttler(this._onScroll.bind(this)));
+            this._on(this._handle, "mousedown", this._onHandleGrab.bind(this));
+            this._on(this._scroll, "mousedown", this._onScrollClick.bind(this));
             
             this._calc();
         },
@@ -96,67 +97,86 @@
         },
 
         _translate : function(pos) {
-            this._handle.style.transform =
-                "translateY(" + clamp(pos, 0, this._heights.max) + "px)";
+            this._handle.style.transform = "translateY(" + clamp(pos, 0, this._heights.max) + "px)";
         },
         
         // Event handlers
+        
         _onScroll : function(e) {
             var top = this._inner.scrollTop;
-            
-            console.log("scroll", top, this._ratios.down, Math.round(top * this._ratios.down));
             
             this._translate(Math.round(top * this._ratios.down));
         },
         
-        _onGrab : function(e) {
-            var rect;
-            
+        _onHandleGrab : function(e) {
             if((e.which || e.buttons) !== 1) {
                 return;
             }
             
-            e.preventDefault();
+            console.log(e);
             
-            // Event Handlers
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // save reference to event handlers we need just while dragging
             this._dragging = [
-                this._on(document, "mousemove", throttler(this._onMove.bind(this))),
-                this._on(document, "mouseup", this._onRelease.bind(this)),
-                this._on(document.body, "mouseenter", this._onEnter.bind(this))
+                this._on(document,      "mousemove",    throttler(this._onHandleMove.bind(this))),
+                this._on(document,      "mouseup",      this._onHandleRelease.bind(this)),
+                this._on(document.body, "mouseenter",   this._onEnter.bind(this))
             ];
             
-            rect = this._handle.getBoundingClientRect();
-            
             // Store offset of where handle was grabbed for later adjustment
-            this._grab = e.pageY - rect.top;
+            this._grab = e.pageY - this._handle.getBoundingClientRect().top;
         },
         
-        _onMove : function(e) {
-            var scroll, handle;
+        // moving handle
+        _onHandleMove : function(e) {
+            var pos;
             
             if(!this._dragging) {
                 return;
             }
             
-            scroll = Math.round((e.pageY - this._rect.top - this._grab) * this._ratios.up);
-            handle = Math.round(scroll * this._ratios.down);
+            // Actual position in the outer container,
+            // adjust event Y by subtracting top of the container & where the handle was grabbed.
+            pos = e.pageY - this._rect.top - this._grab;
             
             // Update elements
-            this._translate(handle);
-            this._inner.scrollTop = scroll;
+            this._translate(pos);
+            this._inner.scrollTop = Math.round(pos * this._ratios.up);
         },
         
-        _onRelease : function() {
+        // letting go of the handle
+        _onHandleRelease : function() {
             this._dragging.forEach(this._off.bind(this));
             this._dragging = false;
         },
         
+        // Ensuring that handle is still being held
         _onEnter : function(e) {
             if(!this._dragging || (e.which || e.buttons) === 1) {
                 return;
             }
             
-            this._onRelease();
+            this._onHandleRelease();
+        },
+        
+        // click on scrollbar
+        _onScrollClick : function(e) {
+            console.log(e);
+            var top    = this._inner.scrollTop,
+                pos    = e.pageY - this._rect.top,
+                handle = this._heights.handle * this._ratios.up;
+            
+            if(top * this._ratios.down > pos) {
+                top -= handle;
+            } else {
+                top += handle;
+            }
+            
+            // Update elements
+            this._translate(Math.round(top * this._ratios.down));
+            this._inner.scrollTop = top;
         }
     };
 
