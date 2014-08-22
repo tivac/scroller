@@ -8,22 +8,9 @@
             config = {};
         }
         
-        this._outer  = el;
-        
-        // TODO: do this during attach, call _wrap if elements don't exist
-        this._inner  = el.querySelector(".inner");
-        this._scroll = el.querySelector(".scrollbar");
-        this._handle = this._scroll.querySelector(".handle");
-        
-        if(!this._inner && !this._handle) {
-            throw new Error("Missing .inner or .handle elements");
-        }
-        
-        this._events  = [];
-        
-        this._observer = new MutationObserver(
-            throttler(this._calc.bind(this))
-        );
+        this._outer    = el;
+        this._events   = [];
+        this._observer = new MutationObserver(throttler(this._calc.bind(this)));
         
         if(config.attach) {
             this.attach();
@@ -52,6 +39,20 @@
         
         // Public-ish API
         attach : function() {
+            var el;
+            
+            this._wrap();
+            
+            el = this._outer;
+            
+            this._inner  = el.querySelector(".inner");
+            this._scroll = el.querySelector(".scrollbar");
+            this._handle = this._scroll.querySelector(".handle");
+
+            if(!this._inner && !this._handle) {
+                throw new Error("Missing .inner or .handle elements");
+            }
+            
             this._observer.observe(this._outer, {
                 childList : true,
                 subtree   : true
@@ -70,43 +71,90 @@
         },
         
         // Utility Methods
-        _calc : function() {
-            var heights, handle;
+        _wrap : function() {
+            var el = this._outer,
+                clone, outer, frag, parent;
             
+            // already wrapped up, bail
+            if(el.querySelector(".inner")) {
+                return;
+            }
+            
+            frag   = document.createDocumentFragment();
+            clone  = el.cloneNode(true);
+            outer  = document.createElement("div");
+            parent = el.parentNode;
+            
+            outer.classList.add("outer");
+            
+            frag.appendChild(outer);
+            
+            outer.innerHTML = [
+                "<div class=\"scrollbar\">",
+                    "<div class=\"button up\"></div>",
+                    "<div class=\"handle\"></div>",
+                    "<div class=\"button down\"></div>",
+                "</div>",
+            ].join("\n");
+            
+            frag.querySelector(".outer").appendChild(clone);
+            
+            clone.classList.add("inner");
+            
+            parent.replaceChild(frag, el);
+                
+            this._outer = parent.querySelector(".outer");
+        },
+        
+        _calc : function() {
+            var heights, handle, scroll;
+
             this._rect    = this._outer.getBoundingClientRect();
             this._heights = heights = {
                 outer  : this._rect.height,
-                inner  : this._inner.scrollHeight
+                inner  : this._inner.scrollHeight,
+                up     : this._outer.querySelector(".button.up").getBoundingClientRect().height,
+                down   : this._outer.querySelector(".button.down").getBoundingClientRect().height
             };
             
-            // Calculate handle height based on content ratio
+            // Calculate handle height based on content size diff
             handle = Math.max(
                 50,
                 Math.round(
-                    this._heights.outer * (heights.outer / heights.inner)
+                    heights.outer * (heights.outer / heights.inner)
                 )
             );
             
-            this._handle.style.height = handle + "px";
-            
             heights.handle = handle;
-            heights.max    = heights.outer - handle;
-            
+            heights.max    = heights.outer - handle - heights.up - heights.down;
+            heights.min    = heights.up;
+                
             // Store ratios now that we know handle height
             // used for going from outer <-> inner
+            
+            scroll = heights.inner - heights.outer - heights.down;
+                
             this._ratios = {
-                down : (heights.max / (heights.inner - heights.outer)),
-                up   : ((heights.inner - heights.outer) / heights.max)
+                down : (heights.max / scroll),
+                up   : (scroll / heights.max)
             };
+                
+            // position and size handle
+            this._onScroll();
+            this._handle.style.height = handle + "px";
         },
 
         _translate : function(pos) {
-            this._handle.style.transform = "translateY(" + clamp(pos, 0, this._heights.max) + "px)";
+            pos = clamp(pos, 0, this._heights.max) + this._heights.min;
+                
+            this._handle.style.transform = "translateY(" + pos + "px)";
         },
         
         // Event handlers
-        _onScroll : function(e) {
-            var top = this._inner.scrollTop;
+        _onScroll : function() {
+            var top;
+                
+            this._top = top = this._inner.scrollTop;
             
             this._translate(Math.round(top * this._ratios.down));
         },
@@ -142,7 +190,6 @@
             pos = e.pageY - this._rect.top - this._grab;
             
             // Update elements
-            this._translate(pos);
             this._inner.scrollTop = Math.round(pos * this._ratios.up);
         },
         
@@ -161,7 +208,7 @@
         },
         
         _onScrollClick : function(e) {
-            var top    = this._inner.scrollTop,
+            var top    = this._top,
                 pos    = e.pageY - this._rect.top,
                 handle = this._heights.handle * this._ratios.up;
             
@@ -172,7 +219,6 @@
             }
             
             // Update elements
-            this._translate(Math.round(top * this._ratios.down));
             this._inner.scrollTop = top;
         }
     };
