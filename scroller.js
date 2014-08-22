@@ -9,6 +9,8 @@
         }
         
         this._outer  = el;
+        
+        // TODO: do this during attach, call _wrap if elements don't exist
         this._inner  = el.querySelector(".inner");
         this._scroll = el.querySelector(".scrollbar");
         this._handle = this._scroll.querySelector(".handle");
@@ -22,8 +24,10 @@
         this._observer = new MutationObserver(
             throttler(this._calc.bind(this))
         );
-
-        this.attach();
+        
+        if(config.attach) {
+            this.attach();
+        }
     }
     
     Scroller.prototype = {
