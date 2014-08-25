@@ -30,16 +30,21 @@
         },
         
         _off : function(id) {
-            var events = id ? this._events.splice(id, 1) : this._events;
+            var events = id ? this._events.splice(id, 1, null) : this._events;
             
             events.forEach(function(e) {
                 e.el.removeEventListener(e.ev, e.fn);
             });
+            
+            // Clean up all events case
+            if(typeof id === "undefined") {
+                this._events = [];
+            }
         },
         
         // Public-ish API
         attach : function() {
-            var el, scroll, inner, handle;
+            var el, scroll, inner, handle, up, down;
             
             this._wrap();
             
@@ -48,6 +53,9 @@
             this._inner  = inner  = el.querySelector(".inner");
             this._scroll = scroll = el.querySelector(".scrollbar");
             this._handle = handle = scroll.querySelector(".handle");
+            
+            up   = scroll.querySelector(".up");
+            down = scroll.querySelector(".down");
 
             if(!inner && !handle) {
                 throw new Error("Missing .inner or .handle elements");
@@ -60,7 +68,11 @@
             
             this._on(inner,  "scroll",    throttler(this._onScroll.bind(this)));
             this._on(handle, "mousedown", this._onHandleGrab.bind(this));
-            this._on(scroll, "mousedown", this._onScrollClick.bind(this));
+            this._on(scroll, "click",     this._onScrollClick.bind(this));
+            this._on(up,     "mousedown", this._onButtonHold.bind(this, "up"));
+            this._on(up,     "click",     this._onButtonClick.bind(this, "up"));
+            this._on(down,   "mousedown", this._onButtonHold.bind(this, "down"));
+            this._on(down,   "click",     this._onButtonClick.bind(this, "down"));
             
             this._calc();
         },
@@ -68,6 +80,16 @@
         detach : function() {
             this._off();
             this._observer.disconnect();
+        },
+        
+        destroy : function() {
+            var self = this;
+            
+            this.detach();
+            
+            Object.keys(this).forEach(function(key) {
+                self[key] = null;
+            });
         },
         
         // Utility Methods
@@ -225,6 +247,35 @@
             // Scroll by 90% of one page
             // dir being true is up, false is down
             this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
+        },
+        
+        _onButtonClick : function(dir, e) {
+            var tgt  = e.target || e.srcElement,
+                dist = clamp(this._heights.outer * 0.1, 20, Infinity);
+            
+            // dir being true is up, false is down
+            this._inner.scrollTop = this._top + Math.round((dir === "up" ? -1 : 1) * dist);
+        },
+        
+        _onButtonHold : function(dir, e) {
+            var release = this._onButtonRelease.bind(this),
+                target  = e.target || e.srcElement;
+            
+            this._holding = {
+                handles   : [
+                    this._on(document, "mouseup",    release),
+                    this._on(target,   "mouseleave", release)
+                ],
+                
+                interval : setInterval(this._onButtonClick.bind(this, dir, e), 100)
+            };
+        },
+        
+        _onButtonRelease : function() {
+            this._holding.handles.forEach(this._off.bind(this));
+            clearInterval(this._holding.interval);
+            
+            this._holding = null;
         }
     };
 
