@@ -9,10 +9,10 @@
         }
         
         this._outer    = el;
+        this._observer = new MutationObserver(throttler(this._onMutation.bind(this)));
         this._events   = {
             count : 0
         };
-        this._observer = new MutationObserver(throttler(this._calc.bind(this)));
         
         if(config.attach) {
             this.attach();
@@ -115,17 +115,17 @@
         // Utility Methods
         _wrap : function() {
             var el = this._outer,
-                clone, outer, frag, parent;
+                outer, frag, parent;
             
             // already wrapped up, bail
             if(el.querySelector(".inner")) {
                 return;
             }
             
-            frag   = document.createDocumentFragment();
-            clone  = el.cloneNode(true);
-            outer  = document.createElement("div");
             parent = el.parentNode;
+            
+            frag   = document.createDocumentFragment();
+            outer  = document.createElement("div");
             
             outer.classList.add("outer");
             
@@ -139,13 +139,14 @@
                 "</div>",
             ].join("\n");
             
-            frag.querySelector(".outer").appendChild(clone);
+            //frag.querySelector(".outer").appendChild(el);
             
-            clone.classList.add("inner");
+            el.classList.add("inner");
             
-            parent.replaceChild(frag, el);
+            parent.insertBefore(frag, el);
                 
             this._outer = parent.querySelector(".outer");
+            this._outer.appendChild(el);
         },
         
         _calc : function() {
@@ -191,7 +192,7 @@
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
                 
-        _buttonClick : function(dir) {
+        _buttonMove : function(dir) {
             var dist = clamp(this._heights.outer * 0.1, 20, Infinity);
             
             // dir being true is up, false is down
@@ -199,6 +200,16 @@
         },
         
         // Event handlers
+        
+        _onMutation : function() {
+            // Mutation events may not change the height, so check first
+            if(this._heights.inner === this._inner.scrollHeight) {
+                return;
+            }
+            
+            this._calc();
+        },
+                
         _onScroll : function() {
             var top;
                 
@@ -269,7 +280,7 @@
         _onButtonDown : function(dir, e) {
             var target  = e.target || e.srcElement,
                 release = this._onButtonClick.bind(this),
-                click   = this._buttonClcik.bind(this, dir);
+                click   = this._buttonMove.bind(this, dir, e);
             
             click();
             
