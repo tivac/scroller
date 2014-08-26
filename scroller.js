@@ -9,7 +9,9 @@
         }
         
         this._outer    = el;
-        this._events   = [];
+        this._events   = {
+            count : 0
+        };
         this._observer = new MutationObserver(throttler(this._calc.bind(this)));
         
         if(config.attach) {
@@ -20,26 +22,42 @@
     Scroller.prototype = {
         // DOM event binding niceties
         _on : function(el, ev, fn) {
+            var id = "e" + this._events.count++;
+            
             el.addEventListener(ev, fn, false);
             
-            return this._events.push({
+            this._events[id] = {
                 el : el,
                 ev : ev,
                 fn : fn
-            });
+            };
+            
+            return id;
         },
         
         _off : function(id) {
-            var events = id ? this._events.splice(id, 1, null) : this._events;
+            var self = this,
+                events;
             
-            events.forEach(function(e) {
-                e.el.removeEventListener(e.ev, e.fn);
-            });
-            
-            // Clean up all events case
-            if(typeof id === "undefined") {
-                this._events = [];
+            if(id) {
+                events = Array.isArray(id) ? id : [ id ];
+            } else {
+                events = Object.keys(this._events);
             }
+            
+            events.forEach(function(id) {
+                var event = self._events[id];
+                
+                if(id === "count" || !event) {
+                    return;
+                }
+                
+                event.el.removeEventListener(event.ev, event.fn);
+                
+                // Clean up reference & decrement counter so we can re-use the slot
+                self._events[id] = null;
+                self._events.count--;
+            });
         },
         
         // Public-ish API
@@ -224,7 +242,7 @@
         },
         
         _onHandleRelease : function() {
-            this._dragging.forEach(this._off.bind(this));
+            this._off(this._dragging);
             this._dragging = false;
         },
         
@@ -270,7 +288,7 @@
             e.stopPropagation();
             
             if(this._holding) {
-                this._holding.handles.forEach(this._off.bind(this));
+                this._off(this._holding.handles);
                 clearInterval(this._holding.interval);
             }
             
