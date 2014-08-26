@@ -191,7 +191,7 @@
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
                 
-        _buttonMove : function(dir) {
+        _buttonClick : function(dir) {
             var dist = clamp(this._heights.outer * 0.1, 20, Infinity);
             
             // dir being true is up, false is down
@@ -269,7 +269,7 @@
         _onButtonDown : function(dir, e) {
             var target  = e.target || e.srcElement,
                 release = this._onButtonClick.bind(this),
-                click   = this._buttonMove.bind(this, dir, e);
+                click   = this._buttonClcik.bind(this, dir);
             
             click();
             
