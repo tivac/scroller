@@ -69,10 +69,12 @@
             this._on(inner,  "scroll",    throttler(this._onScroll.bind(this)));
             this._on(handle, "mousedown", this._onHandleGrab.bind(this));
             this._on(scroll, "click",     this._onScrollClick.bind(this));
-            this._on(up,     "mousedown", this._onButtonHold.bind(this, "up"));
-            this._on(up,     "click",     this._onButtonClick.bind(this, "up"));
-            this._on(down,   "mousedown", this._onButtonHold.bind(this, "down"));
-            this._on(down,   "click",     this._onButtonClick.bind(this, "down"));
+            
+            this._on(up,     "mousedown", this._onButtonDown.bind(this, "up"));
+            this._on(up,     "click",     this._onButtonClick.bind(this));
+            
+            this._on(down,   "mousedown", this._onButtonDown.bind(this, "down"));
+            this._on(down,   "click",     this._onButtonClick.bind(this));
             
             this._calc();
         },
@@ -133,10 +135,10 @@
 
             this._rect    = this._outer.getBoundingClientRect();
             this._heights = heights = {
-                outer  : this._rect.height,
-                inner  : this._inner.scrollHeight,
-                up     : this._outer.querySelector(".button.up").getBoundingClientRect().height,
-                down   : this._outer.querySelector(".button.down").getBoundingClientRect().height
+                outer : this._rect.height,
+                inner : this._inner.scrollHeight,
+                up    : this._outer.querySelector(".button.up").getBoundingClientRect().height,
+                down  : this._outer.querySelector(".button.down").getBoundingClientRect().height
             };
             
             // Calculate handle height based on content size diff
@@ -170,6 +172,13 @@
                 
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
+                
+        _buttonMove : function(dir) {
+            var dist = clamp(this._heights.outer * 0.1, 20, Infinity);
+            
+            // dir being true is up, false is down
+            this._inner.scrollTop = this._top + Math.round((dir === "up" ? -1 : 1) * dist);
+        },
         
         // Event handlers
         _onScroll : function() {
@@ -190,9 +199,9 @@
             
             // save reference to event handlers we need just while dragging
             this._dragging = [
-                this._on(document,      "mousemove",    throttler(this._onHandleMove.bind(this))),
-                this._on(document,      "mouseup",      this._onHandleRelease.bind(this)),
-                this._on(document.body, "mouseenter",   this._onEnter.bind(this))
+                this._on(document,      "mousemove",  throttler(this._onHandleMove.bind(this))),
+                this._on(document,      "mouseup",    this._onHandleRelease.bind(this)),
+                this._on(document.body, "mouseenter", this._onEnter.bind(this))
             ];
             
             // Store offset of where handle was grabbed for later adjustment
@@ -229,37 +238,22 @@
         },
         
         _onScrollClick : function(e) {
-            var tgt = e.target || e.srcElement,
-                dir, dist;
-            
-            // How to determine scroll direction differs, depends
-            // on if click was on scrollbar or on scroll button.
-            // Scroll checks location of click vs scroll position
-            // Button just checks button type
-            if(tgt === this._scroll) {
-                dir  = (this._top * this._ratios.down) > (e.pageY - this._rect.top);
+            var tgt  = e.target || e.srcElement,
+                dir  = (this._top * this._ratios.down) > (e.pageY - this._rect.top),
+                // Scroll by 90% of one page
                 dist = this._heights.outer * 0.9;
-            } else {
-                dir = tgt.classList.contains("up");
-                dist = clamp(this._heights.outer * 0.1, 20, Infinity);
-            }
             
-            // Scroll by 90% of one page
             // dir being true is up, false is down
             this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
         },
         
-        _onButtonClick : function(dir, e) {
-            var tgt  = e.target || e.srcElement,
-                dist = clamp(this._heights.outer * 0.1, 20, Infinity);
-            
-            // dir being true is up, false is down
-            this._inner.scrollTop = this._top + Math.round((dir === "up" ? -1 : 1) * dist);
-        },
         
-        _onButtonHold : function(dir, e) {
-            var release = this._onButtonRelease.bind(this),
-                target  = e.target || e.srcElement;
+        _onButtonDown : function(dir, e) {
+            var target  = e.target || e.srcElement,
+                release = this._onButtonClick.bind(this),
+                click   = this._buttonMove.bind(this, dir, e);
+            
+            click();
             
             this._holding = {
                 handles   : [
@@ -267,13 +261,18 @@
                     this._on(target,   "mouseleave", release)
                 ],
                 
-                interval : setInterval(this._onButtonClick.bind(this, dir, e), 100)
+                interval : setInterval(click, 100)
             };
         },
         
-        _onButtonRelease : function() {
-            this._holding.handles.forEach(this._off.bind(this));
-            clearInterval(this._holding.interval);
+        _onButtonClick : function(e) {
+            // Prevent _onScrollClick from firing when you let go
+            e.stopPropagation();
+            
+            if(this._holding) {
+                this._holding.handles.forEach(this._off.bind(this));
+                clearInterval(this._holding.interval);
+            }
             
             this._holding = null;
         }
