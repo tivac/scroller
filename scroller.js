@@ -84,15 +84,20 @@
                 subtree   : true
             });
             
-            this._on(inner,  "scroll",    throttler(this._onScroll.bind(this)));
+            this._on(inner, "scroll", throttler(this._onScroll.bind(this)));
+            
+            // Handle click/drag is different from holdable stuff
             this._on(handle, "mousedown", this._onHandleGrab.bind(this));
-            this._on(scroll, "click",     this._onScrollClick.bind(this));
+            this._on(handle, "click",     this._stopEvent.bind(this));
             
-            this._on(up,     "mousedown", this._onButtonDown.bind(this, "up"));
-            this._on(up,     "click",     this._onButtonClick.bind(this));
+            this._on(scroll, "mousedown", this._onHoldableDown.bind(this, this._scrollHold));
+            this._on(scroll, "click",     this._onHoldableRelease.bind(this));
             
-            this._on(down,   "mousedown", this._onButtonDown.bind(this, "down"));
-            this._on(down,   "click",     this._onButtonClick.bind(this));
+            this._on(up,     "mousedown", this._onHoldableDown.bind(this, this._buttonHold));
+            this._on(up,     "click",     this._onHoldableRelease.bind(this));
+            
+            this._on(down,   "mousedown", this._onHoldableDown.bind(this, this._buttonHold));
+            this._on(down,   "click",     this._onHoldableRelease.bind(this));
             
             this._calc();
         },
@@ -113,6 +118,11 @@
         },
         
         // Utility Methods
+        _stopEvent : function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        },
+
         _wrap : function() {
             var el = this._outer,
                 outer, frag, parent;
@@ -192,15 +202,32 @@
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
                 
-        _buttonMove : function(dir) {
-            var dist = clamp(this._heights.outer * 0.1, 20, Infinity);
+        _buttonHold : function(e) {
+            var dir  = e.target.classList.contains("up"),
+                dist = clamp(this._heights.outer * 0.1, 20, Infinity);
             
-            // dir being true is up, false is down
-            this._inner.scrollTop = this._top + Math.round((dir === "up" ? -1 : 1) * dist);
+            // dir: true is up, false is down
+            this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
+        },
+
+        _scrollHold : function(e) {
+            var tgt  = e.target,
+                // dir: true is up, false is down
+                dir  = (e.pageY - this._rect.top) < this._handle.getBoundingClientRect().top,
+                // Scroll by 90% of one page
+                dist = this._heights.outer * 0.9,
+                top  = this._top + Math.round((dir ? -1 : 1) * dist),
+                orig = this._holding.position * this._ratios.up;
+            
+            if((!dir && top > orig) ||
+               ( dir && top < orig)) {
+                return this._onHoldableRelease.call(this, e);
+            }
+            
+            this._inner.scrollTop = top;
         },
         
         // Event handlers
-        
         _onMutation : function() {
             // Mutation events may not change the height, so check first
             if(this._heights.inner === this._inner.scrollHeight) {
@@ -223,8 +250,7 @@
                 return;
             }
             
-            e.preventDefault();
-            e.stopPropagation();
+            this._stopEvent(e);
             
             // save reference to event handlers we need just while dragging
             this._dragging = [
@@ -265,41 +291,37 @@
             
             this._onHandleRelease();
         },
-        
-        _onScrollClick : function(e) {
-            var tgt  = e.target || e.srcElement,
-                dir  = (this._top * this._ratios.down) > (e.pageY - this._rect.top),
-                // Scroll by 90% of one page
-                dist = this._heights.outer * 0.9;
+
+        // Generic click & hold support for scrollbar/buttons
+        _onHoldableDown : function(fn, e) {
+            var target  = e.target,
+                action  = fn.bind(this, e),
+                release = this._onHoldableRelease.bind(this);
             
-            // dir being true is up, false is down
-            this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
-        },
-        
-        
-        _onButtonDown : function(dir, e) {
-            var target  = e.target || e.srcElement,
-                release = this._onButtonClick.bind(this),
-                click   = this._buttonMove.bind(this, dir, e);
-            
-            click();
+            this._stopEvent(e);
             
             this._holding = {
+                position  : e.pageY - this._rect.top,
+                
                 handles   : [
                     this._on(document, "mouseup",    release),
                     this._on(target,   "mouseleave", release)
                 ],
                 
-                interval : setInterval(click, 100)
+                interval : setInterval(action, 100)
             };
+            
+            action();
         },
         
-        _onButtonClick : function(e) {
-            // Prevent _onScrollClick from firing when you let go
-            e.stopPropagation();
+        _onHoldableRelease : function(e) {
+            // Prevent any bubbling when mouse is released
+            this._stopEvent(e);
             
+            // Clean up
             if(this._holding) {
                 this._off(this._holding.handles);
+
                 clearInterval(this._holding.interval);
             }
             
