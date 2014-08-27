@@ -210,21 +210,45 @@
             this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
         },
 
-        _scrollHold : function(e) {
-            var tgt  = e.target,
-                // dir: true is up, false is down
-                dir  = (e.pageY - this._rect.top) < this._handle.getBoundingClientRect().top,
-                // Scroll by 90% of one page
-                dist = this._heights.outer * 0.9,
-                top  = this._top + Math.round((dir ? -1 : 1) * dist),
-                orig = this._holding.position * this._ratios.up;
+        // Determine scroll direction by comparing click position to handle location (top & bottom)
+        // Determine distance to scroll by looking at how far to get to click
+        // direction indicates
+        _scrollHold : function(e, first) {
+            var state  = this._holding,
+                handle = this._handle.getBoundingClientRect(),
+                dir, dist, done;
             
-            if((!dir && top > orig) ||
-               ( dir && top < orig)) {
-                return this._onHoldableRelease.call(this, e);
+            // Store some state the first time through
+            if(first) {
+                dir = state.mouseY < handle.top && state.mouseY < handle.bottom;
+            
+                state.iteration = 1;
+                state.total     = state.mouseY - handle[dir ? "top" : "bottom"];
+                state.dir       = dir;
+            } else {
+                dir = state.dir;
+        
+                state.iteration++;
             }
             
-            this._inner.scrollTop = top;
+            // 24 was chosen because it "feels good". It's... weird.
+            dist = Math.round((state.total / 12) * state.iteration);
+            
+            // Check if we'd overshoot upwards
+            if(dir && handle.top + dist < state.mouseY) {
+                done = dist = state.mouseY - handle.top;
+            }
+        
+            // Check if we'd overshoot downwards, add half the handle height because it feels better
+            if(!dir && handle.bottom + dist > state.mouseY) {
+                done = dist = state.mouseY - handle.bottom + (handle.height / 2);
+            }
+        
+            this._inner.scrollTop += Math.round(dist * this._ratios.up);
+            
+            if(done) {
+                this._onHoldableRelease(e);
+            }
         },
         
         // Event handlers
@@ -301,17 +325,15 @@
             this._stopEvent(e);
             
             this._holding = {
-                position  : e.pageY - this._rect.top,
-                
+                mouseY    : e.pageY - this._rect.top,
+                interval  : setInterval(action, 100),
                 handles   : [
                     this._on(document, "mouseup",    release),
                     this._on(target,   "mouseleave", release)
-                ],
-                
-                interval : setInterval(action, 100)
+                ]
             };
             
-            action();
+            action(true);
         },
         
         _onHoldableRelease : function(e) {
