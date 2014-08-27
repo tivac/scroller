@@ -90,8 +90,8 @@
             this._scroll = scroll = el.querySelector(".scrollbar");
             this._handle = handle = scroll.querySelector(".handle");
             
-            up   = scroll.querySelector(".up");
-            down = scroll.querySelector(".down");
+            this._up   = up   = el.querySelector(".up");
+            this._down = down = el.querySelector(".down");
 
             if(!inner && !handle) {
                 throw new Error("Missing .inner or .handle elements");
@@ -159,10 +159,12 @@
             frag.appendChild(outer);
             
             outer.innerHTML = [
-                "<div class=\"scrollbar\">",
-                    "<div class=\"button up\"></div>",
-                    "<div class=\"handle\"></div>",
-                    "<div class=\"button down\"></div>",
+                "<div class=\"scroll-area\">",
+                    "<button class=\"up\"></button>",
+                    "<div class=\"scrollbar\">",
+                        "<div class=\"handle\"></div>",
+                    "</div>",
+                    "<button class=\"down\"></button>",
                 "</div>",
             ].join("\n");
             
@@ -179,27 +181,32 @@
         _calc : function() {
             var heights, handle, scroll;
 
-            this._rect    = this._outer.getBoundingClientRect();
-            this._heights = heights = {
-                outer : this._rect.height,
-                inner : this._inner.scrollHeight,
-                up    : this._outer.querySelector(".button.up").getBoundingClientRect().height,
-                down  : this._outer.querySelector(".button.down").getBoundingClientRect().height
+            this._rects = {
+                outer  : this._outer.getBoundingClientRect(),
+                scroll : this._scroll.getBoundingClientRect()
             };
-            
+                
+            this._heights = heights = {
+                outer  : this._rects.outer.height,
+                inner  : this._inner.scrollHeight,
+                scroll : this._rects.scroll.height,
+                up     : this._up.getBoundingClientRect().height,
+                down   : this._down.getBoundingClientRect().height
+            };
+                
             // Calculate handle height based on content size diff
-            handle = Math.max(
-                50,
+            handle = clamp(
                 Math.round(
                     heights.outer * (heights.outer / heights.inner)
-                )
+                ),
+                50,
+                this._heights.scroll
             );
             
             heights.handle = handle;
-            heights.max    = heights.outer - handle - heights.up - heights.down;
-            heights.min    = heights.up;
+            heights.max    = heights.scroll - handle;
                 
-            scroll = heights.inner - heights.outer - heights.down;
+            scroll = heights.inner - heights.outer;
                 
             // Store ratios now that we know handle height
             // used for going from outer <-> inner
@@ -207,7 +214,7 @@
                 down : (heights.max / scroll),
                 up   : (scroll / heights.max)
             };
-                
+            
             // position and size handle
             this._onScroll();
             this._handle.style.height = handle + "px";
@@ -255,15 +262,16 @@
         _scrollHold : function(e, first) {
             var state  = this._holding,
                 handle = this._handle.getBoundingClientRect(),
+                mouseY = e.pageY - this._rects.scroll.top,
                 dir, dist, done;
             
             // Store some state the first time through
             if(first) {
-                dir  = state.mouseY < handle.top && state.mouseY < handle.bottom;
+                dir  = mouseY < handle.top && mouseY < handle.bottom;
                 dist = Math.round(this._heights.outer * 0.2);
                 
                 state.iteration = 1;
-                state.total     = state.mouseY - handle[dir ? "top" : "bottom"];
+                state.total     = mouseY - handle[dir ? "top" : "bottom"];
                 state.dir       = dir;
                 state.dist      = dist;
             } else {
@@ -277,13 +285,13 @@
             dist *= (dir ? -1 : 1) * state.iteration;
             
             // Check if we'd overshoot upwards
-            if(dir && handle.top + dist < state.mouseY) {
-                done = dist = state.mouseY - handle.top;
+            if(dir && handle.top + dist < mouseY) {
+                done = dist = mouseY - handle.top;
             }
         
             // Check if we'd overshoot downwards, add half the handle height because it feels better
-            if(!dir && handle.bottom + dist > state.mouseY) {
-                done = dist = state.mouseY - handle.bottom + (handle.height / 2);
+            if(!dir && handle.bottom + dist > mouseY) {
+                done = dist = mouseY - handle.bottom + (handle.height / 2);
             }
         
             this._scrollTo(
@@ -303,14 +311,14 @@
             if(this._heights.inner === this._inner.scrollHeight) {
                 return;
             }
-            
+    
             this._calc();
         },
                 
         _onScroll : function() {
             this._top = this._inner.scrollTop;
             
-            pos = clamp(Math.round(this._top * this._ratios.down), 0, this._heights.max) + this._heights.min;
+            pos = clamp(Math.round(this._top * this._ratios.down), 0, this._heights.max);
                 
             this._handle.style.transform = "translateY(" + pos + "px)";
         },
@@ -342,7 +350,7 @@
             
             // Actual position in the outer container,
             // adjust event Y by subtracting top of the container & where the handle was grabbed.
-            pos = e.pageY - this._rect.top - this._grab;
+            pos = e.pageY - this._rects.scroll.top - this._grab;
             
             // Update elements
             this._inner.scrollTop = Math.round(pos * this._ratios.up);
@@ -371,10 +379,9 @@
             this._stopEvent(e);
             
             this._holding = {
-                mouseY    : e.pageY - this._rect.top,
-                repeat    : repeat,
-                interval  : setInterval(action, repeat),
-                handles   : [
+                repeat   : repeat,
+                interval : setInterval(action, repeat),
+                handles  : [
                     this._on(document, "mouseup",    release),
                     this._on(target,   "mouseleave", release)
                 ]

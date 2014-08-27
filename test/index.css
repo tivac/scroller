@@ -1,13 +1,8 @@
+/* Scroller architectural styles */
 .outer {
-    width: 300px;
-    height: 500px;
-}
-
-/* Scrolling-relevant styles */
-.outer {
+    overflow: hidden;
     overflow-y: auto;
     position: relative;
-    overflow: hidden;
 }
 
 .inner {
@@ -21,18 +16,72 @@
     padding-right: 20px;
 }
 
-.scrollbar {
+.scroll-area {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    width: 10px;
-    background: #000;
+    width: 12px;
+    z-index: 1;
+    
+    display: flex;
+    flex-direction: column;
+    
+    -webkit-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+    
 }
 
-.scrollbar .handle {
+.scroll-area .scrollbar {
+    flex: 1;
+
+}
+
+.scroll-area .scrollbar .handle {
     position: relative;
     top: 0;
-    background: #666;
-    height: 30px;
+}
+
+.scroll-area button {
+    flex: none;
+}
+
+
+/* GW2 Styling */
+.scrollbar {
+    background: url(http://tivac.com/gw2/scroll/track.png) repeat-y center;
+
+}
+.scrollbar .handle {
+    background: #000 url(http://tivac.com/gw2/scroll/handle-middle.png) center no-repeat;
+    transition: -webkit-filter 0.5s ease-out;
+}
+
+.scrollbar .handle:hover {
+    transition: -webkit-filter 0.1s ease-in;
+    -webkit-filter: brightness(120%);
+}
+
+.scroll-area button {
+    border: none;
+    padding: 0;
+    height: 12px;
+    width: 100%;
+}
+
+.scroll-area button.up {
+    background: url(http://tivac.com/gw2/scroll/up.png);
+}
+
+.scroll-area button.down {
+    background: url(http://tivac.com/gw2/scroll/down.png);
+}
+
+/* Demo styles */
+.outer,
+.scroll:not(.inner) {
+    width: 400px;
+    height: 800px;
+    overflow: hidden;
 }
