@@ -1,4 +1,22 @@
 (function(win) {
+    var requestAnimationFrame =
+            window.requestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            window.webkitRequestAnimationFrame,
+        
+        cancelAnimationFrame =
+            window.cancelAnimationFrame ||
+            window.mozCancelAnimationFrame ||
+            window.webkitCancelAnimationFrame;
+    
+    function linear(t) {
+        return t;
+    }
+
+    function easeOutQuartic(t) {
+        return -(Math.pow((t - 1), 4) - 1);
+    }
+    
     function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
     }
@@ -90,14 +108,13 @@
             this._on(handle, "mousedown", this._onHandleGrab.bind(this));
             this._on(handle, "click",     this._stopEvent.bind(this));
             
-            this._on(scroll, "mousedown", this._onHoldableDown.bind(this, this._scrollHold));
+            this._on(scroll, "mousedown", this._onHoldableDown.bind(this, this._scrollHold, 300));
             this._on(scroll, "click",     this._onHoldableRelease.bind(this));
             
-            this._on(up,     "mousedown", this._onHoldableDown.bind(this, this._buttonHold));
-            this._on(up,     "click",     this._onHoldableRelease.bind(this));
-            
-            this._on(down,   "mousedown", this._onHoldableDown.bind(this, this._buttonHold));
-            this._on(down,   "click",     this._onHoldableRelease.bind(this));
+            [ up, down ].forEach(function(btn) {
+                this._on(btn,     "mousedown", this._onHoldableDown.bind(this, this._buttonHold, 75));
+                this._on(btn,     "click",     this._onHoldableRelease.bind(this));
+            }.bind(this));
             
             this._calc();
         },
@@ -195,24 +212,46 @@
             this._onScroll();
             this._handle.style.height = handle + "px";
         },
-
-        _translate : function(pos) {
-            pos = clamp(pos, 0, this._heights.max) + this._heights.min;
-                
-            this._handle.style.transform = "translateY(" + pos + "px)";
+        
+        _scrollTo : function(end, duration, ease) {
+            var clock = performance.now(),
+                start = this._top,
+                step  = function(now) {
+                    var elapsed = now - clock;
+                    
+                    if(elapsed > duration) {
+                        this._inner.scrollTop = end;
+                        return;
+                    }
+                    
+                    this._inner.scrollTop = start + (end - start) * ease(elapsed / duration);
+                    this._raf = requestAnimationFrame(step);
+                }.bind(this);
+            
+            if(this._raf) {
+                cancelAnimationFrame(this._raf);
+            }
+            
+            if(!ease) {
+                ease = linear;
+            }
+            
+            this._raf = requestAnimationFrame(step);
         },
-                
+
+        // React to scroll buttons being held
         _buttonHold : function(e) {
             var dir  = e.target.classList.contains("up"),
                 dist = clamp(this._heights.outer * 0.1, 20, Infinity);
             
             // dir: true is up, false is down
-            this._inner.scrollTop = this._top + Math.round((dir ? -1 : 1) * dist);
+            this._scrollTo(
+               this._top + Math.round((dir ? -1 : 1) * dist),
+               this._holding.repeat
+           );
         },
-
-        // Determine scroll direction by comparing click position to handle location (top & bottom)
-        // Determine distance to scroll by looking at how far to get to click
-        // direction indicates
+        
+        // React to scrollbar being held
         _scrollHold : function(e, first) {
             var state  = this._holding,
                 handle = this._handle.getBoundingClientRect(),
@@ -244,7 +283,11 @@
                 done = dist = state.mouseY - handle.bottom + (handle.height / 2);
             }
         
-            this._inner.scrollTop += Math.round(dist * this._ratios.up);
+            this._scrollTo(
+                this._top + Math.round(dist * this._ratios.up),
+                state.repeat - 100,
+                easeOutQuartic
+            );
             
             if(done) {
                 this._onHoldableRelease(e);
@@ -262,11 +305,11 @@
         },
                 
         _onScroll : function() {
-            var top;
-                
-            this._top = top = this._inner.scrollTop;
+            this._top = this._inner.scrollTop;
             
-            this._translate(Math.round(top * this._ratios.down));
+            pos = clamp(Math.round(this._top * this._ratios.down), 0, this._heights.max) + this._heights.min;
+                
+            this._handle.style.transform = "translateY(" + pos + "px)";
         },
         
         _onHandleGrab : function(e) {
@@ -317,7 +360,7 @@
         },
 
         // Generic click & hold support for scrollbar/buttons
-        _onHoldableDown : function(fn, e) {
+        _onHoldableDown : function(fn, repeat, e) {
             var target  = e.target,
                 action  = fn.bind(this, e),
                 release = this._onHoldableRelease.bind(this);
@@ -326,7 +369,8 @@
             
             this._holding = {
                 mouseY    : e.pageY - this._rect.top,
-                interval  : setInterval(action, 100),
+                repeat    : repeat,
+                interval  : setInterval(action, repeat),
                 handles   : [
                     this._on(document, "mouseup",    release),
                     this._on(target,   "mouseleave", release)
@@ -352,5 +396,4 @@
     };
 
     win.Scroller = Scroller;
-    
 }(window));
