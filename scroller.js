@@ -259,19 +259,22 @@
             
             // Store some state the first time through
             if(first) {
-                dir = state.mouseY < handle.top && state.mouseY < handle.bottom;
-            
+                dir  = state.mouseY < handle.top && state.mouseY < handle.bottom;
+                dist = Math.round(this._heights.outer * 0.2);
+                
                 state.iteration = 1;
                 state.total     = state.mouseY - handle[dir ? "top" : "bottom"];
                 state.dir       = dir;
+                state.dist      = dist;
             } else {
-                dir = state.dir;
+                dir  = state.dir;
+                dist = state.dist;
         
                 state.iteration++;
             }
             
             // The divisor was chosen because it "feels good". It's... weird.
-            dist = Math.round((state.total / 12) * state.iteration);
+            dist *= (dir ? -1 : 1) * state.iteration;
             
             // Check if we'd overshoot upwards
             if(dir && handle.top + dist < state.mouseY) {
