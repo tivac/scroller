@@ -231,7 +231,7 @@
                 state.iteration++;
             }
             
-            // 24 was chosen because it "feels good". It's... weird.
+            // The divisor was chosen because it "feels good". It's... weird.
             dist = Math.round((state.total / 12) * state.iteration);
             
             // Check if we'd overshoot upwards
