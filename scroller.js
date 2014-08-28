@@ -168,8 +168,6 @@
                 "</div>",
             ].join("\n");
             
-            //frag.querySelector(".outer").appendChild(el);
-            
             el.classList.add("inner");
             
             parent.insertBefore(frag, el);
@@ -215,9 +213,6 @@
                 up   : (scroll / heights.max)
             };
             
-            console.log(100 * this._ratios.up);
-            console.log(100 * this._ratios.up * this._ratios.down);
-                
             // position and size handle
             this._onScroll();
             this._handle.style.height = handle + "px";
@@ -248,7 +243,7 @@
             
             this._raf = requestAnimationFrame(step);
         },
-
+                
         // React to scroll buttons being held
         _buttonHold : function(e) {
             var dir  = e.target.classList.contains("up"),
@@ -266,29 +261,27 @@
             var state  = this._holding,
                 handle = this._handle.getBoundingClientRect(),
                 mouseY = e.pageY - this._rects.scroll.top,
-                dist, done;
+                change, top;
             
             if(first) {
                 state.dir = mouseY < handle.top && mouseY < handle.bottom;
                 
                 // First iteration moves one scrollbar height
-                dist = this._top + Math.round((state.dir ? -1 : 1) * handle.height * this._ratios.up);
+                change = (state.dir ? -1 : 1) * handle.height;
+                top    = this._top + Math.round(change * this._ratios.up);
             } else {
                 // second iteration goes the rest of the way
-                dist = Math.round((mouseY - handle.height / 2) * this._ratios.up);
-            }
-            
-            // Check if we'd overshoot upwards or downwards
-            // and stops further iteration
-            if(( state.dir && dist < (mouseY * this._ratios.up)) ||
-               (!state.dir && dist > (mouseY * this._ratios.up))) {
+                change = mouseY - (handle.height / 2);
+                top    = Math.round(change * this._ratios.up);
+                
+                // Don't want any more to execute
                 this._onHoldableRelease(e);
             }
-        
+                
             this._scrollTo(
-                dist,
-                // TODO: second one should scale in duration based on distance
-                first ? 100 : 200,
+                top,
+                // Second one scales based on distance
+                first ? 200 : clamp(handle.bottom + (state.dir ? -1 : 1) * change, 300, 800),
                 easeOutQuartic
             );
         },
