@@ -258,30 +258,32 @@
         
         // React to scrollbar being held
         _scrollHold : function(e, first) {
-            var state  = this._holding,
-                handle = this._handle.getBoundingClientRect(),
+            var handle = this._handle.getBoundingClientRect(),
                 mouseY = e.pageY - this._rects.scroll.top,
-                change, top;
-            
+                dir    = mouseY < handle.top && mouseY < handle.bottom,
+                change, top, done;
+
             if(first) {
-                state.dir = mouseY < handle.top && mouseY < handle.bottom;
-                
                 // First iteration moves one scrollbar height
-                change = (state.dir ? -1 : 1) * handle.height;
+                change = (dir ? -1 : 1) * handle.height;
                 top    = this._top + Math.round(change * this._ratios.up);
             } else {
                 // second iteration goes the rest of the way
                 change = mouseY - (handle.height / 2);
                 top    = Math.round(change * this._ratios.up);
-                
-                // Don't want any more to execute
+            }
+            
+            // Check if weve gone far enough
+            // Down check's a bit complicated because it has to factor in handle height
+            if(( dir && top < (mouseY * this._ratios.up)) ||
+               (!dir && top > ((mouseY - handle.height / 2) * this._ratios.up))) {
                 this._onHoldableRelease(e);
             }
-                
+            
             this._scrollTo(
                 top,
                 // Second one scales based on distance
-                first ? 200 : clamp(handle.bottom + (state.dir ? -1 : 1) * change, 300, 800),
+                first ? 200 : clamp(handle.bottom + (dir ? -1 : 1) * change, 100, 800),
                 easeOutQuartic
             );
         },
