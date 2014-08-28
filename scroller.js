@@ -215,6 +215,9 @@
                 up   : (scroll / heights.max)
             };
             
+            console.log(100 * this._ratios.up);
+            console.log(100 * this._ratios.up * this._ratios.down);
+                
             // position and size handle
             this._onScroll();
             this._handle.style.height = handle + "px";
@@ -263,46 +266,31 @@
             var state  = this._holding,
                 handle = this._handle.getBoundingClientRect(),
                 mouseY = e.pageY - this._rects.scroll.top,
-                dir, dist, done;
+                dist, done;
             
-            // Store some state the first time through
             if(first) {
-                dir  = mouseY < handle.top && mouseY < handle.bottom;
-                dist = Math.round(this._heights.outer * 0.2);
+                state.dir = mouseY < handle.top && mouseY < handle.bottom;
                 
-                state.iteration = 1;
-                state.total     = mouseY - handle[dir ? "top" : "bottom"];
-                state.dir       = dir;
-                state.dist      = dist;
+                // First iteration moves one scrollbar height
+                dist = this._top + Math.round((state.dir ? -1 : 1) * handle.height * this._ratios.up);
             } else {
-                dir  = state.dir;
-                dist = state.dist;
-        
-                state.iteration++;
+                // second iteration goes the rest of the way
+                dist = Math.round((mouseY - handle.height / 2) * this._ratios.up);
             }
             
-            // The divisor was chosen because it "feels good". It's... weird.
-            dist *= (dir ? -1 : 1) * state.iteration;
-            
-            // Check if we'd overshoot upwards
-            if(dir && handle.top + dist < mouseY) {
-                done = dist = mouseY - handle.top;
-            }
-        
-            // Check if we'd overshoot downwards, add half the handle height because it feels better
-            if(!dir && handle.bottom + dist > mouseY) {
-                done = dist = mouseY - handle.bottom + (handle.height / 2);
+            // Check if we'd overshoot upwards or downwards
+            // and stops further iteration
+            if(( state.dir && dist < (mouseY * this._ratios.up)) ||
+               (!state.dir && dist > (mouseY * this._ratios.up))) {
+                this._onHoldableRelease(e);
             }
         
             this._scrollTo(
-                this._top + Math.round(dist * this._ratios.up),
-                state.repeat - 100,
+                dist,
+                // TODO: second one should scale in duration based on distance
+                first ? 100 : 200,
                 easeOutQuartic
             );
-            
-            if(done) {
-                this._onHoldableRelease(e);
-            }
         },
         
         // Event handlers
