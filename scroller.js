@@ -1,4 +1,7 @@
+/*jshint browser:true */
+/*global throttler */
 (function(win) {
+    "use strict";
     var requestAnimationFrame =
             window.requestAnimationFrame ||
             window.mozRequestAnimationFrame ||
@@ -261,7 +264,7 @@
             var handle = this._handle.getBoundingClientRect(),
                 mouseY = e.pageY - this._rects.scroll.top,
                 dir    = mouseY < handle.top && mouseY < handle.bottom,
-                change, top, done;
+                change, top;
 
             if(first) {
                 // First iteration moves one scrollbar height
@@ -299,6 +302,8 @@
         },
                 
         _onScroll : function() {
+            var pos;
+
             this._top = this._inner.scrollTop;
             
             pos = clamp(Math.round(this._top * this._ratios.down), 0, this._heights.max);
